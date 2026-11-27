@@ -1,0 +1,18 @@
+$ node scripts/e2e-module-selection.mjs
+node:internal/fs/promises:641
+  return new FileHandle(await PromisePrototypeThen(
+                        ^
+
+Error: ENOENT: no such file or directory, open 'C:\Users\cmh\AppData\Local\Temp\rsdp-module-selection.png'
+    at async open (node:internal/fs/promises:641:25)
+    at async Object.writeFile (node:internal/fs/promises:1215:14)
+    at async _Page.screenshot (D:\rooom\rsdp-office\frontend\node_modules\.pnpm\playwright-core@1.64.0\node_modules\playwright-core\lib\coreBundle.js:63319:11)
+    at async file:///D:/rooom/rsdp-office/frontend/scripts/e2e-module-selection.mjs:107:3 {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'C:\\Users\\cmh\\AppData\\Local\\Temp\\rsdp-module-selection.png'
+}
+
+Node.js v22.19.0
+[ELIFECYCLE] Command failed with exit code 1.

@@ -1,0 +1,18 @@
+*** Begin Patch
+*** Update File: D:\rooom\rsdp-office\frontend\app\composables\useOfficeApi.ts
+@@
+-<<<<<<< Updated upstream
+   }, workspaceId?: string): Promise<CanvasDto | null> {
+     // 调用方可能传入空字符串（尚未选择项目/楼层），此时回退到当前楼层；
+     // 仍然为空则抛出明确提示，避免拼出 /projects//canvas 这类 404 地址。
+-    const targetProjectId = workspaceId || requireProjectId()
++    const targetProjectId = validateProjectId(workspaceId || selectedProjectId())
+     return await request<CanvasDto>('PUT', `/api/v1/office/projects/${encodeURIComponent(targetProjectId)}/canvas`, {
+       projectId: targetProjectId,
+-=======
+-  }, workspaceId = requireProjectId()): Promise<CanvasDto | null> {
+-    const projectId = validateProjectId(workspaceId)
+-    return await request<CanvasDto>('PUT', `/api/v1/office/projects/${projectId}/canvas`, {
+-      projectId,
+->>>>>>> Stashed changes
+*** End Patch

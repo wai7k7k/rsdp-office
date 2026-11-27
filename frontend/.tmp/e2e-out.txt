@@ -1,0 +1,18 @@
+$ node scripts/e2e-module-recommendations.mjs
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+locator.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for getByTestId('module-product-recommendations').getByRole('button', { name: /^贴合/ })
+
+    at D:\rooom\rsdp-office\frontend\scripts\e2e-module-recommendations.mjs:267:52 {
+  log: [
+    "  - waiting for getByTestId('module-product-recommendations').getByRole('button', { name: /^贴合/ })"
+  ],
+  name: 'TimeoutError'
+}
+
+Node.js v22.19.0
+[ELIFECYCLE] Command failed with exit code 1.
