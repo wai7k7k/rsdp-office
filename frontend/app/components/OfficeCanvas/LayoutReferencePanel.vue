@@ -23,6 +23,8 @@ const addToExistingGroup = ref(false)
 const includeOtherCategories = ref(props.existing?.includeOtherCategories ?? !props.categoryIds.length)
 const status = ref('正在读取当前空间底图…')
 const gateProblem = ref('')
+const gateClearAndRecognize = ref(false)
+const confirmingClear = ref(false)
 const options = (id: string) => (REFERENCE_TEMPLATES[id] || []).filter(key => furnitureById.has(key))
 const selected = computed(() => editing.value?.selected == null ? null : editing.value.marks[editing.value.selected])
 const label = (id: string) => furnitureById.get(id)?.name || id
@@ -135,8 +137,11 @@ function applyTaskResult(record: LayoutReferenceTask) {
 async function recognize() {
   if (!upload.value || busy.value || !editing.value) return
   gateProblem.value = ''
+  gateClearAndRecognize.value = false
+  confirmingClear.value = false
   if (officeStore.furnitureForZone(props.zone.id).length > 0) {
     gateProblem.value = '请清除当前画布上的家具'
+    gateClearAndRecognize.value = true
     return
   }
   status.value = '正在识别裁图中的家具…'
@@ -150,6 +155,20 @@ async function recognize() {
     layoutSignature: furnitureLayoutSignature(officeStore.furnitureForZone(props.zone.id)),
     isValid: mark => options(mark.categoryId).includes(mark.templateId),
   })
+}
+
+/** 识别结果面向空画布（recognize 的拦截）；面板内两步确认后清空家具并立即继续识别。 */
+function clearAndRecognize() {
+  if (busy.value || !editing.value) return
+  confirmingClear.value = true
+}
+
+function confirmClearAndRecognize() {
+  confirmingClear.value = false
+  officeStore.clearFurniture(props.zone.id)
+  gateProblem.value = ''
+  gateClearAndRecognize.value = false
+  void recognize()
 }
 
 function close() {
@@ -175,6 +194,7 @@ function applyCurrent() {
   // 兜底拦截：结果展示后画布才摆上家具时，阻止基于空画布识别的旧结果覆盖新排版。
   if (officeStore.furnitureForZone(props.zone.id).length > 0) {
     gateProblem.value = '请清除当前画布上的家具'
+    gateClearAndRecognize.value = false
     return
   }
   emit('apply', { crop: state.crop, analysisId: props.plan.analysisId, revision, marks: state.marks.map(mark => ({ ...mark })), includeOtherCategories: includeOtherCategories.value })
@@ -192,6 +212,17 @@ function applyCurrent() {
       <template v-if="editing?.crop">
         <button type="button" data-testid="reference-recognize" class="w-full border border-line px-2 py-2 text-xs font-medium disabled:opacity-50" :disabled="busy" @click="recognize">{{ busy ? '正在识别…' : '识别原图家具' }}</button>
         <p v-if="gateProblem" class="text-[10px] text-[#a65e4c]" role="status">{{ gateProblem }}</p>
+        <div v-if="gateClearAndRecognize">
+          <button v-if="!confirmingClear" type="button" data-testid="reference-clear-and-recognize" class="w-full border border-[#a65e4c] px-2 py-1.5 text-[11px] font-medium text-[#a65e4c] disabled:opacity-50" :disabled="busy" @click="clearAndRecognize">清空画布家具并继续识别</button>
+          <div v-else role="alertdialog" aria-label="确认清空画布家具" data-testid="reference-clear-confirm" class="border border-[#a65e4c] bg-white p-2 text-[11px]">
+            <p class="font-semibold text-[#403a33]">确认清空「{{ zone.name }}」画布上的全部家具？</p>
+            <p class="mt-0.5 text-[10px] text-muted">清空后立即继续识别原图家具，可通过工具栏撤销恢复。</p>
+            <div class="mt-2 flex gap-2">
+              <button type="button" data-testid="reference-clear-confirm-ok" class="flex-1 bg-[#a65e4c] px-2 py-1.5 font-semibold text-white disabled:opacity-50" :disabled="busy" @click="confirmClearAndRecognize">确认清空并继续</button>
+              <button type="button" class="flex-1 border border-line px-2 py-1.5 text-muted" @click="confirmingClear = false">取消</button>
+            </div>
+          </div>
+        </div>
         <p class="text-[10px] text-muted">在画布上点选家具，拖动调整位置。橙色图例待确认。</p>
         <div class="space-y-2 border-y border-line py-2 text-xs">
           <div class="grid grid-cols-2 gap-1">

@@ -181,15 +181,10 @@ try {
   await page.getByText('请清除当前画布上的家具', { exact: true }).waitFor()
   assert.equal(recognizeCalls, 0, '画布有家具时不发起识别请求')
 
-  // 清空画布后发起识别；切换标签页不中断任务，回来仍显示正在识别。
-  await page.getByRole('button', { name: '返回组合布局', exact: true }).click()
-  await page.getByTestId('layout-reference-panel').waitFor({ state: 'detached' })
-  await page.getByTestId('auto-clear-layout').click()
+  // 一键清空画布家具并继续识别：面板内两步确认后清空并自动发起识别，不离开参考面板。
+  await page.getByTestId('reference-clear-and-recognize').click()
+  await page.getByTestId('reference-clear-confirm-ok').click()
   await page.waitForFunction(() => !(JSON.parse(localStorage.getItem('rsdp-office-v01:MOCK-USER:OFFICE-PROJECT-001')).objects || []).some(object => object.kind === 'furniture'))
-  await page.getByTestId('mixed-layout-reference').click()
-  await page.getByTestId('layout-reference-panel').waitFor()
-  await referenceLayer.waitFor()
-  await page.getByTestId('reference-recognize').click()
   await page.waitForFunction(() => document.querySelector('[data-testid="reference-recognize"]')?.textContent === '正在识别…')
   assert.equal(await page.getByTestId('reference-recognize').isDisabled(), true, '识别进行中按钮禁用')
   await page.getByTestId('tab-product-selection').click()
@@ -386,7 +381,7 @@ try {
   assert.equal((await state()).objects.filter(object => object.layoutReference).length, 0, '兜底拦截后无参考家具写入')
 
   assert.deepEqual(errors, [], '页面无脚本错误')
-  console.log('预览拖动 E2E 通过：单模块和组合快照应用、参考家具吸附、旋转和删除快捷键、点放补录及来源写入；画布占用拦截识别、识别任务跨标签页保留与结果恢复、已展示未应用结果跨页面恢复、重试失败保留标记、排版变化阻止旧结果覆盖。')
+  console.log('预览拖动 E2E 通过：单模块和组合快照应用、参考家具吸附、旋转和删除快捷键、点放补录及来源写入；画布占用拦截识别与一键清空后继续识别、识别任务跨标签页保留与结果恢复、已展示未应用结果跨页面恢复、重试失败保留标记、排版变化阻止旧结果覆盖。')
 } finally {
   if (browser) await browser.close()
   app.kill()
