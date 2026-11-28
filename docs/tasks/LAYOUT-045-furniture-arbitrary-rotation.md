@@ -19,7 +19,7 @@
 ## 修改
 
 - `stores/office.ts`：`rotateFurnitureGroup(ids, zoneId, angleDeg = 90)` 新增角度参数，默认 90 保证全部既有调用方（空格键、3D 白模、产品排版编辑器）行为不变；非法/零角度返回「请输入非零旋转角度」（对齐 rotateZone 文案）。
-- `CanvasBoard.vue` 选中操作条：新增「旋转 [角度输入]°」（参考家具选择时仍只显示 90°）。输入即渲染层预览（`rotatePreviewItem` 注入 `dragFurnitureItem` 与 `dimensionFurniture`，尺寸标注随预览更新），**自动落库**（2026-11-28 按用户要求从「应用按钮」改为）：Enter、焦点离开输入框（点击画布/其他家具/任意操作）、切换选中、画布 pointerdown 均提交预览；仅 Esc 放弃。提交按输入时刻的选中集快照（`rotatePreviewIds`）落库，点别的家具时旋转落在原选中家具上。「旋转 90°」按钮与空格键保持即时生效。
+- `CanvasBoard.vue` 选中操作条：新增「旋转 [角度输入]°」（参考家具选择时仍只显示 90°）。输入即渲染层预览（`rotatePreviewItem` 注入 `dragFurnitureItem` 与 `dimensionFurniture`，尺寸标注随预览更新），**自动落库**（2026-11-28 按用户要求从「应用按钮」改为）：Enter 应用并取消选中（操作条收起，直接看到成品状态），焦点离开输入框（点击画布/其他家具/任意操作）、切换选中、画布 pointerdown 静默提交；仅 Esc 放弃。校验失败不取消选中，错误提示保留。提交按输入时刻的选中集快照（`rotatePreviewIds`）落库，点别的家具时旋转落在原选中家具上。「旋转 90°」按钮与空格键保持即时生效。
 - 事件顺序说明：初版「blur 丢弃预览」与「watch 切换选中提交」存在竞态（blur 同步先于 watch 异步执行，预览被先丢弃），故统一为 blur 即提交，只有 Esc 是放弃出口，撤销可回退。
 - `e2e-multi-furniture.mjs`：新增任意角度断言组——输入 45° 只预览不落库、Enter 应用为 45° 且 layoutConfirmed=false、切换选中自动应用（累计 75°）、点击画布自动应用（累计回 0°）、0° 拒绝不生效。另修复 mock 项目 leader 缺 `permissions: ['EDIT']` 导致 `canEditFloor` 拒载本地草稿、全部家具用例超时的既有问题（新版工作区权限门禁与老 mock 结构不匹配）。
 

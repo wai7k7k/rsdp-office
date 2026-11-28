@@ -585,13 +585,17 @@ function onRotateAngleInput() {
   if (!rotatePreviewIds.value) rotatePreviewIds.value = [...selectedFurnitureIds.value]
 }
 function discardRotatePreview() { rotatePreviewIds.value = null }
-/** 有待应用的预览时按输入角度落库（快照输入时的选中集）；校验失败清空预览并提示。 */
-function commitRotateSelection() {
+/** 有待应用的预览时按输入角度落库（快照输入时的选中集）；校验失败清空预览并提示。Enter 提交成功时取消选中，让用户看到应用后的成品状态。 */
+function commitRotateSelection(deselect = false) {
   const ids = rotatePreviewIds.value
   rotatePreviewIds.value = null
   if (!ids?.length || mode.value !== 'design' || !store.designZoneId) return
   const result = store.rotateFurnitureGroup(ids, store.designZoneId, rotateAngle.value)
   moveProblem.value = result || ''
+  if (deselect && (!result || result.startsWith('已旋转'))) {
+    selectedFurnitureIds.value = []
+    selectedId.value = null
+  }
 }
 const referenceFeedback = ref('')
 watch(() => activeReference.value?.zoneId, () => {
@@ -2389,8 +2393,8 @@ function furnitureProduct(o: FurnitureObject) {
     <div v-if="(selectedFurnitureItems.length || selectedReference) && !placing && !activeReference?.placement" class="absolute right-4 top-4 z-10 max-w-[60%] flex items-center gap-2 rounded-lg border border-line bg-white/95 px-3 py-2 shadow-sm" @pointerdown.stop>
       <span class="text-xs truncate">{{ selectedReference?.label || (selectedFurnitureItems.length === 1 ? (selectedFurniture?.label || '已选家具模块') : `已选 ${selectedFurnitureItems.length} 件模块`) }}</span>
       <button class="flex-none rounded-lg px-2 py-1 text-xs text-[#5b5751] hover:bg-[#f3efe9]" title="旋转 90°（空格）" data-testid="rotate-selection" @click.stop="rotateSelection">旋转 90°</button>
-      <form v-if="!selectedReference" class="flex flex-none items-center gap-1 text-xs text-[#5b5751]" data-testid="rotate-angle-form" title="调整角度即时预览；Enter 或移开焦点自动应用，Esc 放弃" @submit.prevent="commitRotateSelection" @pointerdown.stop>
-        旋转<input v-model.number="rotateAngle" type="number" min="-360" max="360" step="5" aria-label="家具旋转角度（度，顺时针为正）" class="w-14 rounded border border-line px-1 py-0.5 text-xs" @input="onRotateAngleInput" @keydown.enter.prevent="commitRotateSelection" @keydown.esc.prevent="discardRotatePreview" @blur="commitRotateSelection"><span>°</span>
+      <form v-if="!selectedReference" class="flex flex-none items-center gap-1 text-xs text-[#5b5751]" data-testid="rotate-angle-form" title="调整角度即时预览；Enter 应用并取消选中，移开焦点自动应用，Esc 放弃" @submit.prevent="commitRotateSelection(true)" @pointerdown.stop>
+        旋转<input v-model.number="rotateAngle" type="number" min="-360" max="360" step="5" aria-label="家具旋转角度（度，顺时针为正）" class="w-14 rounded border border-line px-1 py-0.5 text-xs" @input="onRotateAngleInput" @keydown.enter.prevent="commitRotateSelection(true)" @keydown.esc.prevent="discardRotatePreview" @blur="commitRotateSelection()"><span>°</span>
       </form>
       <button v-if="!selectedReference" class="flex-none rounded-lg px-2 py-1 text-xs text-[#5b5751] hover:bg-[#f3efe9]" title="水平镜像" data-testid="mirror-selection" @click.stop="mirrorSelection">水平镜像</button>
       <button class="flex-none rounded-lg px-2 py-1 text-xs text-red-600 hover:bg-red-50" title="Delete / Backspace" @click.stop="deleteSelection">删除选中模块</button>

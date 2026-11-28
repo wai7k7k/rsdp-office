@@ -164,6 +164,8 @@ try {
   await rotateInput.press('Enter')
   assert.equal((await items()).find(f => f.id === 'C').rotation, 45, 'Enter 应用输入角度')
   assert.equal((await items()).find(f => f.id === 'C').layoutConfirmed, false)
+  assert.equal(await page.getByTestId('rotate-angle-form').count(), 0, 'Enter 应用后取消选中，操作条收起')
+  await item('C').click()
   await rotateInput.fill('30')
   await item('E').click()
   assert.equal((await items()).find(f => f.id === 'C').rotation, 75, '切换选中时自动应用待提交的旋转')
