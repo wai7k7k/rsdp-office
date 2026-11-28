@@ -571,22 +571,26 @@ const selectedFurnitureIds = defineModel<string[]>('selectedFurnitureIds', { def
 const selectedChannelId = ref<string | null>(null)
 const selectedFurnitureItems = computed(() => furniture.value.filter(item => selectedFurnitureIds.value.includes(item.id)))
 const moveProblem = ref('')
-/** 任意角度旋转：输入只置脏并驱动渲染层预览，应用/Enter 才落库（对齐 SpaceReview 空间旋转语义）。 */
+/** 任意角度旋转：输入即渲染层预览；Enter 或焦点离开输入框（点击画布/切换选中/其他操作）自动落库；仅 Esc 放弃。 */
 const rotateAngle = ref(45)
-const rotateDirty = ref(false)
-watch(selectedFurnitureIds, () => { rotateDirty.value = false })
-const rotatePreviewAngle = computed(() => rotateDirty.value && Number.isFinite(rotateAngle.value) && rotateAngle.value ? rotateAngle.value : null)
+const rotatePreviewIds = ref<string[] | null>(null)
+watch(selectedFurnitureIds, () => commitRotateSelection())
+const rotatePreviewAngle = computed(() => rotatePreviewIds.value?.length && Number.isFinite(rotateAngle.value) && rotateAngle.value ? rotateAngle.value : null)
 function rotatePreviewItem(item: FurnitureObject) {
-  return rotatePreviewAngle.value !== null && selectedFurnitureIds.value.includes(item.id)
+  return rotatePreviewAngle.value !== null && rotatePreviewIds.value!.includes(item.id)
     ? { ...item, rotation: ((item.rotation + rotatePreviewAngle.value) % 360 + 360) % 360 }
     : item
 }
-function discardRotatePreview() { rotateDirty.value = false }
-function applyRotateSelection() {
-  if (mode.value !== 'design' || !store.designZoneId || !selectedFurnitureIds.value.length) return
-  const result = store.rotateFurnitureGroup(selectedFurnitureIds.value, store.designZoneId, rotateAngle.value)
-  if (result && !result.startsWith('已旋转')) { moveProblem.value = result; return }
-  rotateDirty.value = false
+function onRotateAngleInput() {
+  if (!rotatePreviewIds.value) rotatePreviewIds.value = [...selectedFurnitureIds.value]
+}
+function discardRotatePreview() { rotatePreviewIds.value = null }
+/** 有待应用的预览时按输入角度落库（快照输入时的选中集）；校验失败清空预览并提示。 */
+function commitRotateSelection() {
+  const ids = rotatePreviewIds.value
+  rotatePreviewIds.value = null
+  if (!ids?.length || mode.value !== 'design' || !store.designZoneId) return
+  const result = store.rotateFurnitureGroup(ids, store.designZoneId, rotateAngle.value)
   moveProblem.value = result || ''
 }
 const referenceFeedback = ref('')
@@ -645,7 +649,6 @@ function deleteSelection() {
 }
 
 function rotateSelection() {
-  rotateDirty.value = false
   if (activeReference.value) { rotateReferenceSelection(activeReference.value); return }
   if (mode.value !== 'design' || !store.designZoneId || !selectedFurnitureIds.value.length) return
   moveProblem.value = store.rotateFurnitureGroup(selectedFurnitureIds.value, store.designZoneId) || ''
@@ -1132,8 +1135,9 @@ function onFurnitureContextMenu(f: FurnitureObject, event: MouseEvent) {
 }
 
 function onPointerDown(e: PointerEvent) {
-  if (e.button !== 0 || !canvasWindow.value || tool.value === 'pan' || drag.value?.mode === 'pan') return
-  rotateDirty.value = false
+  if (e.button !== 0 || !canvasWindow.value) return
+  commitRotateSelection()
+  if (tool.value === 'pan' || drag.value?.mode === 'pan') return
   const target = e.target as HTMLElement
   const hit = target.closest('.board-element') as HTMLElement | null
   const p = point(e)
@@ -1684,7 +1688,7 @@ function onKeydown(e: KeyboardEvent) {
   }
   if (e.key === 'Escape') {
     store.cancelFurniturePlacement()
-    rotateDirty.value = false
+    discardRotatePreview()
     if (sketchPoints.value.length) { sketchPoints.value = []; sketchHover.value = null; return }
     selectedId.value = null
     selectedFurnitureIds.value = []
@@ -2385,9 +2389,8 @@ function furnitureProduct(o: FurnitureObject) {
     <div v-if="(selectedFurnitureItems.length || selectedReference) && !placing && !activeReference?.placement" class="absolute right-4 top-4 z-10 max-w-[60%] flex items-center gap-2 rounded-lg border border-line bg-white/95 px-3 py-2 shadow-sm" @pointerdown.stop>
       <span class="text-xs truncate">{{ selectedReference?.label || (selectedFurnitureItems.length === 1 ? (selectedFurniture?.label || '已选家具模块') : `已选 ${selectedFurnitureItems.length} 件模块`) }}</span>
       <button class="flex-none rounded-lg px-2 py-1 text-xs text-[#5b5751] hover:bg-[#f3efe9]" title="旋转 90°（空格）" data-testid="rotate-selection" @click.stop="rotateSelection">旋转 90°</button>
-      <form v-if="!selectedReference" class="flex flex-none items-center gap-1 text-xs text-[#5b5751]" data-testid="rotate-angle-form" title="调整角度即时预览；仅 Enter 或点「应用」保存，点击其他位置或 Esc 放弃预览" @submit.prevent="applyRotateSelection" @pointerdown.stop>
-        旋转<input v-model.number="rotateAngle" type="number" min="-360" max="360" step="5" aria-label="家具旋转角度（度，顺时针为正）" class="w-14 rounded border border-line px-1 py-0.5 text-xs" @input="rotateDirty = true" @keydown.enter.prevent="applyRotateSelection" @keydown.esc.prevent="discardRotatePreview" @blur="discardRotatePreview"><span>°</span>
-        <button type="submit" class="rounded-lg px-2 py-1 hover:bg-[#f3efe9] disabled:opacity-40" :disabled="!Number.isFinite(rotateAngle) || !rotateAngle" data-testid="apply-rotate-selection">应用</button>
+      <form v-if="!selectedReference" class="flex flex-none items-center gap-1 text-xs text-[#5b5751]" data-testid="rotate-angle-form" title="调整角度即时预览；Enter 或移开焦点自动应用，Esc 放弃" @submit.prevent="commitRotateSelection" @pointerdown.stop>
+        旋转<input v-model.number="rotateAngle" type="number" min="-360" max="360" step="5" aria-label="家具旋转角度（度，顺时针为正）" class="w-14 rounded border border-line px-1 py-0.5 text-xs" @input="onRotateAngleInput" @keydown.enter.prevent="commitRotateSelection" @keydown.esc.prevent="discardRotatePreview" @blur="commitRotateSelection"><span>°</span>
       </form>
       <button v-if="!selectedReference" class="flex-none rounded-lg px-2 py-1 text-xs text-[#5b5751] hover:bg-[#f3efe9]" title="水平镜像" data-testid="mirror-selection" @click.stop="mirrorSelection">水平镜像</button>
       <button class="flex-none rounded-lg px-2 py-1 text-xs text-red-600 hover:bg-red-50" title="Delete / Backspace" @click.stop="deleteSelection">删除选中模块</button>
@@ -2414,5 +2417,6 @@ function furnitureProduct(o: FurnitureObject) {
       <span>⌕</span>
       <span>{{ mode === 'design' ? '当前空间 · ' + (designZone?.reviewUnit === 'mm' ? '毫米' : '待校准') : '空间总览' }}</span>
     </div>
+    <OfficeCanvasRecognitionGateDialog />
   </div>
 </template>
